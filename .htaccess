@@ -1,0 +1,17 @@
+php_flag magic_quotes_gpc off
+php_flag register_globals off
+
+
+Options +FollowSymlinks
+
+RewriteEngine on
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+
+#RewriteRule ^source/(.*)/(.*)\?(.*)?$ $2$3&dir_source=$1 [QSA,L]
+
+#RewriteRule ^source/(.*)/(.*)/(\/.*)?$ hello/$3?dir_source=$1 [QSA,L]
+
+
+RewriteRule ^(.*)/lr/(.*)$ $2?dir_source=$1 [QSA,L]

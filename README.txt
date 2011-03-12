@@ -1,6 +1,8 @@
 LightRod README.txt
 -------------------
 
+Test Change
+
 To install a basic location server follow the instructions after running index.php 
 in your browser, assuming you have unpacked this into your web path.  If not, copy
 this directory tree into your web path.

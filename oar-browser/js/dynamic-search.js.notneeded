@@ -1,0 +1,259 @@
+
+
+
+
+
+
+
+/*
+	Remote data loader code
+	By Sergey Chernyshev
+
+	For more details see http://www.sergeychernyshev.com/javascript/remoteloader/
+*/
+var SERGEYCHE = SERGEYCHE || { tools: {} };
+
+SERGEYCHE.tools.add_js = function(url, bDefer)
+{	
+	alert(url);
+	
+	
+	
+	// create SCRIPT tag
+	var scrptElement = document.createElement("script");
+
+	// set its attributes
+	scrptElement.setAttribute("type", "text/javascript");
+	scrptElement.setAttribute("language", "JavaScript");
+	scrptElement.setAttribute("src", url);
+	if (bDefer)
+	{
+		scrptElement.setAttribute("defer", true);
+	}
+
+	// add this new element to the head tag
+	document.getElementsByTagName("head")[0].appendChild(scrptElement);
+	
+	//alert(scrptElement);  Adding in this, and it works every time! Pete
+	
+};
+
+SERGEYCHE.remoteloader = {
+/*
+	a queue of loader objects
+*/
+	loaders: {},
+	callbacks: {},
+/*
+	Detach the loader and return it.
+
+	It'll return null if loader is no longer in the queue
+	Detaching will effectively cancel subsequent callback and timeout 
+*/
+	detach: function(request_id)
+	{
+		/*
+			It would've been ideal if there was an atomic pop for hashes
+			
+			For now we'll assume that nothing happens between
+			getting loader from the queue and removing it from
+		*/
+		var loader = this.loaders[request_id];
+		if (loader !== null)
+		{
+			/*
+				removing from queue so next call to detach would return null
+			*/
+			delete this.loaders[request_id];
+		}
+
+		return loader;
+	},
+
+	cancel: function(request_id)
+	{
+		var loader = this.detach(request_id);
+		if (!loader)
+		{
+			return;
+		}
+		if (typeof loader.onCancel === "function")
+		{
+			loader.onCancel(request_id);
+		}
+	},
+
+/*
+	@loader		Loader object - must have following members
+	
+	  url:		URL to call (we can call only URLs b'cause it's a remote server)
+
+	  success:	function to be called from SERGEYCHE.remoteloader.callback
+
+	  timeout:	will call failure function if timed out (optional)
+
+	  failure:	failure callback function to call in case of timeout
+			(we can't really know if there is a problem - just timeout)
+			optional, must be specified if timeout is set
+
+	@request_id	optional unique identifier of data request,
+			will be used to identify a loading object.
+
+*/
+	load: function(loader, request_id)
+	{
+		if (typeof loader === 'undefined' ||
+			typeof loader.url === 'undefined' ||
+			typeof loader.onSuccess !== 'function')
+		{
+			throw ('Loader object must have at least url property and onSuccess event handler');
+		}
+
+		this.loaders[request_id] = loader;
+		this.callbacks[request_id] = function(request_id)
+		{
+			return function(data) {
+				var r = request_id;
+				/*
+					This one can be called after loader got detached
+					That's why it's here and not in detach method
+				*/
+				delete SERGEYCHE.remoteloader.callbacks[r];
+
+				/*
+					Calling callback function to 
+				*/
+				
+				return SERGEYCHE.remoteloader.callback(data, r);
+			}
+		}(request_id);
+
+		/*
+			Run timeout function even if we don't have a onFailure handler
+			At least it'll remove a loader object from memory
+		*/
+		if (loader.timeout > 0)
+		{
+			
+			setTimeout("SERGEYCHE.remoteloader.timeout('" + request_id + "')",
+				loader.timeout);
+		}
+
+
+		loader.request_id = request_id;
+
+		/*
+			Uncomment this to emulate timeout
+		
+			alert('waiting');
+		*/
+		
+		SERGEYCHE.tools.add_js(loader.url);
+		
+		
+	},
+
+/*
+	@callback_data	data returned by the call
+
+	@request_id	optional unique identifier of data request,
+			will be used to identify a loader object.
+
+*/
+	callback: function(callback_data, request_id)
+	{
+		 //alert(callback_data);
+		 //callback_data = "SERGEYCHE.remoteloader.callback('" + callback_data + "', 'good info');";		//wrap dynamic stuff around it
+	
+		var loader = this.detach(request_id);
+		if (!loader)
+		{
+			return;
+		}
+
+		if (typeof loader.onSuccess === "function")
+		{
+			loader.onSuccess(callback_data, request_id);
+		}
+		//alert('callback');
+	},
+
+/*
+	@request_id	unique identifier of data request,
+			will be used to identify a loader object.
+*/
+	timeout: function(request_id)
+	{
+	
+		//Tryagain
+		
+	
+		//alert('timeout');
+		var loader = this.detach(request_id);
+		if (!loader)
+		{
+			return;
+		}
+
+		if (typeof loader.onFailure === "function")
+		{
+			loader.onFailure(request_id);
+		}
+	}
+};
+
+
+
+var tries = 5;
+
+function getNakdData(layer, latitude, longitude, show)
+{
+	
+    getUrl = 'http://poi.nakdreality.com/nakdreality/' + layer + '/lr/locations/layar-server.php?lat=' + latitude + '&lon=' + longitude + '&jsServer=1&show=' + show;
+    //getUrl = 'http://poi.nakdreality.com/nakdreality/lessent/lr/locations/layar-server.php?lat=51.02419241098073&lon=-2.7410888671875&jsServer=1';
+    //alert(getUrl);	
+   
+   tries = 5;   
+   callRemote(getUrl);
+
+}
+
+function callRemote(getUrl)
+{
+     
+	
+    SERGEYCHE.remoteloader.load(
+        {
+            url: getUrl,
+            onSuccess: function(data)
+            {
+                //window.document.getElementById('nakddata').innerHTML = data;
+    		           
+                searchComplete(data);
+            },
+            onFailure: function(request_id)
+            {
+    		//alert(getUrl);
+    		        	
+            	tries = tries -1;
+            	if(tries >= 0) {
+            		//If at first it fails, try, try again - note, this may not be necessary - it was server side bug
+            		//that caused me to do this.
+            		callRemote(getUrl);
+            	}
+		 
+		 //window.document.getElementById('error').innerHTML = 'Cant load data - loader timed out (' + request_id + ')';
+		 
+		 
+            },
+            onCancel: function(request_id)
+            {
+                window.document.getElementById('error').innerHTML = 'Cancelled (' + request_id + ')';
+            },
+            timeout: 5000
+        },
+        'good info'
+    );
+    
+}
+

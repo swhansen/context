@@ -1,0 +1,93 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+    <title>Google Maps</title>
+    <script src="http://maps.google.com/maps?file=api&amp;v=2&amp;sensor=false&amp;key=ABQIAAAAPDUET0Qt7p2VcSk6JNU1sBSM5jMcmVqUpI7aqV44cW1cEECiThQYkcZUPRJn9vy_TWxWvuLoOfSFBw" type="text/javascript"></script>
+  </head>
+  <body onunload="GUnload()">
+
+    <div id="map" style="width: 800px; height: 600px"></div>
+    
+    <a href="custommap.htm">Back to the tutorial page</a>
+    
+    <!-- fail nicely if the browser has no Javascript -->
+    <noscript><b>JavaScript must be enabled in order for you to use Google Maps.</b> 
+      However, it seems JavaScript is either disabled or not supported by your browser. 
+      To view Google Maps, enable JavaScript by changing your browser options, and then 
+      try again.
+    </noscript>
+
+    <script type="text/javascript">
+    //<![CDATA[
+
+    if (GBrowserIsCompatible()) {
+
+
+      var map = new GMap(document.getElementById("map"));
+      map.addControl(new GScaleControl());
+      map.addControl(new GLargeMapControl());
+      map.addControl(new GMapTypeControl());
+      
+      // ============================================================
+      // ===== Write our own getTileUrl function ========
+      // This particular one checks to see if the tiles are in range
+      // if so, returns the URL of the actual tile
+      // Otherwise returns the URL of the Google Map tileserver tile
+      CustomGetTileUrl=function(a,b){
+        if (b==14 && a.x>=8051 && a.x<=8056 && a.y>=5271 && a.y<= 5274) {
+          return "http://econym.org.uk/gmap/tiles/"+a.x+"_"+a.y+"_"+(17-b)+".jpg"
+        } else {
+          return G_NORMAL_MAP.getTileLayers()[0].getTileUrl(a,b);
+        }
+      }
+      
+      var copyright = new GCopyright(1,
+          new GLatLngBounds(new GLatLng(53.8136257,-3.0981445),new GLatLng(53.8654855,-2.9663944) ),
+          14, "Ordnance Survey");
+
+      var copyrightCollection = new GCopyrightCollection('Map Data:');
+      copyrightCollection.addCopyright(copyright);
+      
+
+      var tilelayers = [new GTileLayer(copyrightCollection,14,14)];
+      tilelayers[0].getTileUrl = CustomGetTileUrl;
+      
+      // ============================================================
+      // === If we know the copyright, return it, otherwise look for the G_NORMAL_MAP copyright =====      
+      tilelayers[0].getCopyright = function(a,b) {
+        var c= copyrightCollection.getCopyrightNotice(a,b);
+        if (!c) {
+          c = G_NORMAL_MAP.getTileLayers()[0].getCopyright(a,b);
+        }
+        return c;
+      }
+      
+      
+      
+      //var custommap = new GMapType(tilelayers, G_SATELLITE_MAP.getProjection(), "Old OS");
+      //map.addMapType(custommap);
+
+      map.setCenter(new GLatLng(53.852,-3.038), 14); //TEMPOUT, custommap);
+    }
+
+    
+    // display a warning if the browser was not compatible
+    else {
+      alert("Sorry, the Google Maps API is not compatible with this browser");
+    }
+
+    // This Javascript is based on code provided by the
+    // Community Church Javascript Team
+    // http://www.bisphamchurch.org.uk/   
+    // http://econym.org.uk/gmap/
+
+    //]]>
+    </script>
+  </body>
+
+</html>
+
+
+
+

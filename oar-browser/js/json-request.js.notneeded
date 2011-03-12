@@ -1,0 +1,187 @@
+/**
+ * Author: Avlesh Singh
+ * Usage and documentation: http://apps.avlesh.com/JsonRequest
+ * avlesh@gmail.com: for bugs, suggestions and improvements
+ */
+
+var JsonRequestProperties = {
+	urlParamDelimiter: "&",																						/* parameters requested url are separated by this delimiter */
+	paramValueDelimiter: "=",							  													/* parameters and values in the requested url are separated by this delimiter */
+	headRequester: "http://apps.avlesh.com/JsonRequest/get-head.html" /* returns response headers for a requested URL, by making a HEAD request */
+};
+
+var JsonRequestUtil = {
+	sanitiseValue : function(str){
+		return escape(str);
+	}
+};
+
+var JsonRequestInstances = [];
+function JsonRequest(url) {
+	this.urlParamDelimiter = JsonRequestProperties.urlParamDelimiter;
+	this.paramValueDelimiter = JsonRequestProperties.paramValueDelimiter;
+	this.parameters = {};
+	this.docHead = document.getElementsByTagName("head").item(0);
+	this.validateResponseType = false;
+	this.url = url;
+	this.charset = "UTF-8";
+	this.currentInstance = JsonRequestInstances.length;
+	this.selfReference = "JsonRequestInstances[" + this.currentInstance + "]";
+	this.verboseOn = false;
+	this.loadingIndicator = false;
+	JsonRequestInstances[this.currentInstance] = this;
+};
+
+JsonRequest.prototype.setCallbackFunction = function(functionPtr){
+	this.callBack = functionPtr;
+};
+
+JsonRequest.prototype.setValidateResponseType = function(validateResponseType){
+	this.validateResponseType = validateResponseType;
+};
+
+JsonRequest.prototype.setCharset = function(charset){
+	this.charset = charset;
+};
+
+JsonRequest.prototype.setVerboseOn = function(verboseOn){
+	this.verboseOn = verboseOn;
+};
+
+JsonRequest.prototype.setLoadingIndicator = function(loadingIndicator){
+	this.loadingIndicator = loadingIndicator;
+};
+
+JsonRequest.prototype.setParam = function(parameter, value){
+	if(typeof(value) != "undefined"){
+		value = JsonRequestUtil.sanitiseValue(value);
+	}
+
+	if(this.parameters[parameter]){
+    this.parameters[parameter] += this.urlParamDelimiter + parameter + this.paramValueDelimiter + value;
+	}else{
+		this.parameters[parameter] = value;
+	}
+};
+
+JsonRequest.prototype.getRequestUrl = function(){
+  if(this.url.indexOf("?") >= 0){
+    this.url += "&";
+  }else{
+    this.url += "?";
+  }
+
+  var uriString = "";
+	for(var key in this.parameters){
+		uriString += key + this.paramValueDelimiter + this.parameters[key] + this.urlParamDelimiter;
+	}
+	
+	uriString = uriString.substring(0, uriString.length - this.urlParamDelimiter.length);
+	return this.url + uriString;
+};
+
+JsonRequest.prototype.open = function(){
+	this.method = "GET";
+	this.URL = this.getRequestUrl();
+	if(this.loadingIndicator){
+		try{
+			this.loadingIndicator.style.display = "";
+		}catch(e){}
+	}
+	this.send();
+};
+
+JsonRequest.prototype.sendHeadRequest = function(){
+	var headRequest = new JsonRequest(JsonRequestProperties.headRequester);
+	headRequest.setParam("url", this.URL);
+	headRequest.setParam("cb", this.selfReference + ".processHeadResponse");
+	headRequest.open();
+};
+
+JsonRequest.prototype.send = function(){
+	if(this.validateResponseType){
+		this.sendHeadRequest();
+	}else{
+		this.fetchResponse();	
+	}
+};
+
+JsonRequest.prototype.processHeadResponse = function(headers){
+	if(headers && headers["Content-Type"] && headers["Status"]){
+		if(headers["Status"].substring(0,1) == "4" || headers["Status"].substring(0,1) == "5"){
+			if(this.verboseOn){
+				alert("The resource requested was not found on the server. HTTP Status Code: " + headers["Status"]);
+			}
+			this.hideLoadingIndicator();
+		}else if(headers["Content-Type"].indexOf("javascript") >= 0){
+			this.fetchResponse();
+		}else{
+			if(this.verboseOn){
+				alert("The response type for requested URL is " + headers["Content-Type"] + "\nOnly application/x-javascript response expected. Skipping the request");
+			}
+			this.hideLoadingIndicator();
+		}
+	}else{
+		if(this.verboseOn){
+			alert("The url that you specified seems invalid, no response was returned from the server!");
+		}
+		this.hideLoadingIndicator();
+	}
+};
+
+JsonRequest.prototype.hideLoadingIndicator = function(){
+	if(this.loadingIndicator){
+		try{
+			this.loadingIndicator.style.display = "none";
+		}catch(e){}
+	}
+};
+
+JsonRequest.prototype.fetchResponse = function(){
+	this.script = document.createElement("script");
+	this.script.type = "text/javascript";
+	this.script.charset = this.charset;
+	this.script.src = this.URL;
+	if(typeof(this.callBack) == "function"){
+		this.script.callback = this.callBack;
+	}
+
+	var currRequest = this;
+	var scriptLoaded = function() {
+		if(typeof(currRequest.callBack) == "function"){
+			currRequest.callBack();
+		}else{
+			if(currRequest.verboseOn){
+				alert("The script has been included in your page and is now ready for use.");
+			}
+			currRequest.script.parentNode.removeChild(currRequest.script);
+			currRequest.hideLoadingIndicator();
+		}
+	}
+
+	var onReadyStateChange = function(evt) {
+		var e = (evt ? evt:window.event).target ? (evt ? evt:window.event).target : (evt ? evt:window.event).srcElement;
+		if( e.readyState == "loaded" || e.readyState == "complete") {
+			if(typeof(this.callback) == "function"){
+				this.callback();
+			}else{
+				if(this.verboseOn){
+					alert("The script has been included in your page and is now ready for use.");
+				}
+				this.parentNode.removeChild(this);
+				this.hideLoadingIndicator();
+			}
+		}
+	}
+
+	if(navigator.product == "Gecko"){
+		this.script.onload = scriptLoaded;
+	}else{
+		this.script.onreadystatechange = onReadyStateChange;
+	}
+
+	this.docHead.appendChild(this.script);
+	if (this.onreadystatechange ) {
+		this.onreadystatechange();
+	}
+};

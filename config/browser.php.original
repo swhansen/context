@@ -1,0 +1,7 @@
+<?php
+
+	/*  Browser User Configuration */
+	
+	define("GOOGLE_MAPS_KEY", 'ABQIAAAAbi3pFJ-7B6wOjr3zC6E8cRRxPEkfY55iQt7n8wZYUNTmOUKuthSMZ5ZmxcZx5BaQNioK-oEQDZ9YJQ');
+	
+?>
